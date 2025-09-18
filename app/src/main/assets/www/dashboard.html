@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Admin - Event & User Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Uses your existing stylesheet in /www -->
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+        /* Small, page-local helpers */
+        .container { max-width: 1100px; margin: 0 auto; }
+        .section { background: #fff; padding: 16px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,.06); margin-bottom: 16px; }
+        .section h2 { font-size: 1.25rem; margin-bottom: 10px; font-weight: 700; }
+        .row { display: flex; gap: 12px; flex-wrap: wrap; }
+        .row > * { flex: 1 1 260px; }
+        .muted { color:#666; font-size: .95rem; }
+        .pill { display:inline-block; padding: 4px 10px; border-radius:999px; background:#eef; font-weight:600; }
+        .list { max-height: 260px; overflow: auto; border: 1px solid #eee; border-radius: 6px; padding: 8px; }
+        .list-item { display:flex; justify-content:space-between; padding:8px; border-bottom:1px dashed #eee; }
+        .list-item:last-child { border-bottom: none; }
+        .danger { background:#dc3545; color:#fff; }
+        .danger:hover { background:#b02a37; }
+        .secondary { background:#6c757d; color:#fff; }
+        .secondary:hover { background:#5a6268; }
+        .link-btn { border:none; background:#0d6efd; color:#fff; padding:10px 14px; border-radius:6px; text-decoration:none; display:inline-block; }
+        .link-btn:hover { background:#0b5ed7; }
+        form .row { align-items: flex-end; }
+        label { display:block; font-weight:600; margin-bottom:6px; }
+        input[type="text"] { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; }
+        .user-row {
+          display: flex;
+          gap: 12px;
+        }
+        .user-col {
+          flex: 1; /* equal width columns */
+          text-align: left;
+        }
+    </style>
+</head>
+<body class="bingo-body">
+<div class="container" style="width:100%;">
+    <h1 class="page-title">Admin - Event & User Management</h1>
+
+    <!-- Session / Nav -->
+    <div class="section">
+        <div class="col" style="align-items:center;">
+            <div>
+                <span class="muted">Signed in as</span>
+                <strong><span id="uname">—</span></strong>
+                (<span id="urole">—</span>)
+            </div>
+            <div style="flex:0 0 auto; display:flex; gap:10px;">
+                <a class="link-btn" href="/events">Open Event Builder</a>
+                <a class="link-btn" href="/userevents_admin">Open User View</a>
+                <a class="secondary link-btn" href="/logout">Logout</a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Users (Known People) -->
+    <div class="section">
+        <h2>List of Participants</h2>
+        <p class="muted">This list powers the participant picker. Admins can add, modify, or delete people.</p>
+
+        <div class="col">
+            <div>
+                <h3 style="font-weight:700; margin-bottom:8px;">People</h3>
+                <div id="usersList" class="list" aria-live="polite"></div>
+            </div>
+
+            <div>
+                <h3 style="font-weight:700; margin-bottom:8px;">Add Participant</h3>
+                <form id="addUserForm">
+                    <div class="col">
+                        <div>
+                            <label for="addName">Name</label>
+                            <input id="addName" list="addUserNames" type="text" required />
+                            <datalist id="addUserNames"></datalist>
+                        </div>
+                        <div>
+                            <label for="addPhone">Phone</label>
+                            <input id="addPhone" type="text" />
+                        </div>
+                        <div>
+                            <label for="addAddr">Address</label>
+                            <input id="addAddr" type="text" />
+                        </div>
+                        <div style="flex:0 0 auto;">
+                            <button class="button" type="submit">Add</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="col" style="margin-top:12px;">
+            <div>
+                <h3 style="font-weight:700; margin-bottom:8px;">Modify User</h3>
+                <form id="editUserForm">
+                    <div class="col">
+                        <div>
+                            <label for="editName">Name</label>
+                            <input id="editName" list="modUserNames" type="text" required />
+                            <datalist id="modUserNames"></datalist>
+                        </div>
+                        <div>
+                            <label for="editPhone">Phone</label>
+                            <input id="editPhone" type="text" />
+                        </div>
+                        <div>
+                            <label for="editAddr">Address</label>
+                            <input id="editAddr" type="text" />
+                        </div>
+                        <div style="flex:0 0 auto;">
+                            <button class="button" type="submit">Update</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div>
+                <h3 style="font-weight:700; margin-bottom:8px;">Delete User</h3>
+                <form id="delUserForm">
+                    <div class="col">
+                        <div>
+                            <label for="delName">Name (exact)</label>
+                            <input id="delName" list="userNames" type="text" required />
+                            <datalist id="userNames"></datalist>
+                        </div>
+                        <div style="flex:0 0 auto;">
+                            <button class="button danger" type="submit">Delete</button>
+                        </div>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Questions -->
+    <div class="section">
+        <h2>Manage Questions</h2>
+        <div class="col">
+            <div>
+                <h3 style="font-weight:700; margin-bottom:8px;">All Questions</h3>
+                <div id="questionsList" class="list"></div>
+            </div>
+            <div>
+                <h3 style="font-weight:700; margin-bottom:8px;">Add Question</h3>
+                <form id="addQuestionForm">
+                    <div class="col">
+                        <div>
+                            <label for="newQuestion">Question</label>
+                            <input id="newQuestion" type="text" required />
+                        </div>
+                        <div style="flex:0 0 auto;">
+                            <button class="button" type="submit">Add</button>
+                        </div>
+                    </div>
+                </form>
+                <p class="muted" style="margin-top:8px;">(Admins only)</p>
+            </div>
+            <!-- Delete Question -->
+            <div>
+                <h3 style="font-weight:700; margin-bottom:8px;">Delete Question</h3>
+                <form id="delQuestionForm">
+                    <div class="col">
+                        <div>
+                            <label for="delQuestion">Question (exact)</label>
+                            <input id="delQuestion" type="text" list="questionNames" required />
+                            <datalist id="questionNames"></datalist>
+                        </div>
+                        <div style="flex:0 0 auto;">
+                            <button class="button danger" type="submit">Delete</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Events quick link -->
+    <div class="section">
+        <h2>Events</h2>
+        <p class="muted">Build or review events on the Event Builder page.</p>
+        <a class="link-btn" href="/events">Go to Event Builder</a>
+    </div>
+</div>
+
+<script src="/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Events</title>
+    <link rel="stylesheet" href="/style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <script>
+        window.App = window.App || {};
+        App.sessionPromise = App.sessionPromise || (async () => {
+          console.log("[events] 🔑 Fetching /api/session...");
+          const r = await fetch('/api/session', { credentials: 'include' });
+          if (!r.ok) {
+            console.error("[events] ❌ Session fetch failed", r.status, r.statusText);
+            throw new Error('not logged in');
+          }
+          const js = await r.json();
+          console.log("[events] ✅ Session = ", js);
+          return js;
+        })();
+    </script>
+</head>
+<body>
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      console.log("[events] DOMContentLoaded fired");
+      try {
+        const { role, username } = await App.sessionPromise;
+        console.log(`[events] Role=${role} Username=${username}`);
+        document.documentElement.dataset.role = role;
+        document.getElementById("uname").textContent = username;
+        document.getElementById("urole").textContent = role;
+
+        // only show admin sections if role matches
+        document.querySelectorAll(".role-gate").forEach(div => {
+          const need = div.dataset.showRole;
+          div.style.display = (!need || need === role) ? "block" : "none";
+        });
+
+        if (role === "admin") {
+          console.log("[events] Admin detected -> loading events...");
+          await loadEvents();
+        }
+      } catch (err) {
+        console.warn("[events] session check failed -> redirecting to /login", err);
+        location.href = "/login";
+      }
+    });
+</script>
+
+<div class="dashboard">
+    <nav class="nav">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/userevents_admin">User View</a>
+        <a href="/logout">Logout</a>
+    </nav>
+    <p>Logged in as: <strong><span id="uname"></span> role <span id="urole"></span></strong></p>
+
+    <!-- Admin only -->
+    <div class="role-gate" data-show-role="admin">
+        <h1>Events</h1>
+
+        <!-- CREATE / EDIT FORM -->
+        <div class="box" id="create-edit">
+            <div class="section-title" id="form-title">Create a New Event</div>
+            <form id="eventForm">
+                <input type="hidden" id="event_id" />
+
+                <div class="grid one">
+                    <div><label>Title<br><input type="text" id="ev_title" required></label></div>
+                    <div><label>Date<br><input type="date" id="ev_date"></label></div>
+                    <div><label>Time<br><input type="time" id="ev_time"></label></div>
+                    <div><label>Location<br><input type="text" id="ev_location"></label></div>
+                    <div><label>Host<br><input type="text" id="ev_host"></label></div>
+                    <div><label>Notes<br><input type="text" id="ev_notes"></label></div>
+                </div>
+
+                <div class="spacer"></div>
+
+                <div class="section-title">Questions</div>
+                <div class="grid one">
+                    <div>
+                        <label>Saved Question Sets</label>
+                        <div class="list" id="known-questions"></div>
+                    </div>
+                    <div>
+                        <label>Ad-hoc Questions</label>
+                        <div class="list" id="adhoc-questions"></div>
+                        <div class="mt8 flex">
+                            <input type="text" id="new-question" class="grow" placeholder="One-off question..." />
+                            <button type="button" id="add-question" class="warn">Add</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="spacer"></div>
+
+                <div class="section-title">Participants</div>
+                <div class="grid one">
+                    <div>
+                        <label>Registered Users</label>
+                        <div class="list" id="known-users-list"></div>
+                    </div>
+                    <div>
+                        <label>Ad-hoc Participants</label>
+                        <datalist id="known-users"></datalist>
+                        <div class="list" id="adhoc-participants"></div>
+                        <div class="mt8 flex">
+                            <input list="known-users" type="text" id="adhoc_name" placeholder="Name" class="grow"/>
+                        </div>
+                        <div class="mt8 flex">
+                            <input type="text" id="adhoc_phone" placeholder="Phone" class="grow"/>
+                        </div>
+                        <div class="mt8 flex">
+                            <input type="text" id="adhoc_extra" placeholder="Extra info" class="grow"/>
+                        </div>
+                        <div class="mt8">
+                            <button type="button" id="add-adhoc" class="warn">Add</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="spacer"></div>
+                <div class="flex">
+                    <button type="submit" id="save-btn">Save Event</button>
+                    <button type="button" id="reset-btn" class="secondary">Reset</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- EXISTING EVENTS -->
+        <h2>Existing Events</h2>
+        <table class="table">
+            <tbody id="events-container"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let editingId = null;
+    let registeredUsers = [];
+
+    async function api(url, method="GET", data) {
+      console.log(`[events] API call ${method} ${url}`, data || "");
+      const opts = { method, credentials:"include", headers:{ "Content-Type":"application/json" }};
+      if (data) opts.body = JSON.stringify(data);
+      const r = await fetch(url, opts);
+      if (!r.ok) {
+        console.error(`[events] ❌ API failed ${method} ${url} -> ${r.status} ${r.statusText}`);
+        throw new Error(`${method} ${url} -> ${r.status}`);
+      }
+      const js = await r.json();
+      console.log(`[events] ✅ API success ${method} ${url}`, js);
+      return js;
+    }
+
+    // Actual implementation of saveEvent
+    async function saveEvent() {
+      const data = collectPayload();
+      console.log("[events] saveEvent payload participants:", data.participants);
+
+
+      try {
+        if (data.id) {
+          console.log("[events] Updating event:", data.id);
+          await api(`/api/temp_events/${encodeURIComponent(data.id)}`, "PUT", data);
+          alert("Event updated");
+        } else {
+          console.log("[events] Creating new event");
+          await api("/api/temp_events", "POST", data);
+          alert("Event created");
+        }
+
+        // reset form state
+        editingId = null;
+        document.getElementById("form-title").innerText="Create a New Event";
+        document.getElementById("eventForm").reset();
+        document.getElementById("adhoc-questions").innerHTML="";
+        document.getElementById("adhoc-participants").innerHTML="";
+        await loadEvents();
+
+      } catch (err) {
+        console.error("[events] saveEvent error:", err);
+        alert("Save failed");
+      }
+    }
+
+// ✅ Fixed version: restores both known and adhoc participants properly
+function loadIntoForm(ev){
+  console.log("[events] loadIntoForm called with", ev);
+
+  editingId = ev.id;
+  document.getElementById("form-title").innerText="Edit Event";
+
+  // Fill text fields
+  document.getElementById("ev_title").value = ev.name || "";
+  document.getElementById("ev_date").value = ev.date || "";
+  document.getElementById("ev_time").value = ev.time || "";
+  document.getElementById("ev_location").value = ev.location || "";
+  document.getElementById("ev_host").value = ev.host || "";
+  document.getElementById("ev_notes").value = ev.notes || "";
+
+  // Reset questions + reselect
+  document.querySelectorAll("#known-questions input[type=checkbox]").forEach(cb => {
+    cb.checked = ev.questions && ev.questions.includes(cb.value);
+  });
+
+  // Reset ad-hoc questions
+  document.getElementById("adhoc-questions").innerHTML = "";
+  (ev.temp_questions || []).forEach(q => addAdhocQuestion(q));
+
+  // Reset participants + reselect
+  document.querySelectorAll("#known-users-list input[type=checkbox]").forEach(cb => {
+    cb.checked = ev.participants && ev.participants.some(p => p.name === cb.value);
+  });
+
+  // Reset ad-hoc participants
+  document.getElementById("adhoc-participants").innerHTML = "";
+  (ev.participants || []).forEach(p => {
+    const isKnown = registeredUsers.find(u => u.name === p.name);
+    if (!isKnown) {
+      console.log("[loadIntoForm] Restoring adhoc participant:", p);
+      addAdhocParticipant(p);
+    }
+  });
+
+  // Scroll into view
+  document.getElementById("create-edit").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+  console.log("[events] Scrolled to edit form and restored selections");
+}
+
+function collectPayload() {
+  const participants = [];
+
+  // Registered users (checked)
+  document.querySelectorAll("#known-users-list input:checked").forEach(cb => {
+    console.log("[collectPayload] checkbox value =", cb.value);
+    const u = registeredUsers.find(x => x.name === cb.value);
+    if (u) {
+      console.log("[collectPayload] matched user =", u);
+      participants.push({ name: u.name, phone: u.phone || "", extra: "" });
+    } else {
+      console.warn("[collectPayload] ⚠️ No match for", cb.value, "in registeredUsers");
+    }
+  });
+
+  // Ad-hoc participants
+  document.querySelectorAll("#adhoc-participants .adhoc-row").forEach(r => {
+    const adhoc = {
+      name: r.querySelector("[data-name]").value.trim(),
+      phone: r.querySelector("[data-phone]").value.trim(),
+      extra: r.querySelector("[data-extra]").value.trim()
+    };
+    console.log("[collectPayload] adhoc =", adhoc);
+    participants.push(adhoc);
+  });
+
+  const payload = {
+    id: editingId,
+    name: document.getElementById("ev_title").value.trim(),
+    date: document.getElementById("ev_date").value.trim(),
+    time: document.getElementById("ev_time").value.trim(),
+    location: document.getElementById("ev_location").value.trim(),
+    host: document.getElementById("ev_host").value.trim(),
+    notes: document.getElementById("ev_notes").value.trim(),
+    questions: Array.from(document.querySelectorAll("#known-questions input:checked")).map(cb => cb.value),
+    temp_questions: Array.from(document.querySelectorAll("#adhoc-questions .item-row")).map(r => r.dataset.q),
+    participants
+  };
+
+  console.log("[collectPayload] final payload =", payload);
+  return payload;
+}
+
+    function addAdhocParticipant(p={name:"",phone:"",extra:""}) {
+      console.log("[events] addAdhocParticipant called with:", p);
+      const row = document.createElement("div");
+      row.className = "adhoc-row item-row";
+      row.innerHTML = `
+        <input type="text" data-name value="${p.name}" placeholder="Name"/>
+        <input type="text" data-phone value="${p.phone||""}" placeholder="Phone"/>
+        <input type="text" data-extra value="${p.extra||""}" placeholder="Extra"/>
+        <button type="button" class="danger">Remove</button>
+      `;
+      row.querySelector("button").onclick = () => row.remove();
+      document.getElementById("adhoc-participants").appendChild(row);
+    }
+
+    function addAdhocQuestion(q="") {
+      console.log("[events] addAdhocQuestion called with:", q);
+      const row = document.createElement("div");
+      row.className = "item-row";
+      row.innerHTML = `
+        <span>${q}</span>
+        <button type="button" class="danger">Remove</button>
+      `;
+      row.dataset.q = q;
+      row.querySelector("button").onclick = () => row.remove();
+      document.getElementById("adhoc-questions").appendChild(row);
+    }
+
+function renderEventList(events, questions) {
+  const container = document.getElementById("events-container");
+  container.innerHTML = "";
+
+  if (!events || events.length === 0) {
+    container.innerHTML = `<p class="muted">No events found</p>`;
+    return;
+  }
+
+  events.forEach(ev => {
+    const card = document.createElement("div");
+    card.className = "box";
+
+    // Title with toggle button
+    const header = document.createElement("div");
+    header.className = "flex space-between";
+    header.innerHTML = `
+      <button type="button" class="secondary toggle-btn">Expand for Details</button>
+      <h2 style="margin:0;">${ev.name}</h2>
+    `;
+    card.appendChild(header);
+
+    // Details (initially hidden)
+    const details = document.createElement("div");
+    details.className = "details";
+    details.style.display = "none";
+    details.innerHTML = `
+      <p><strong>Date:</strong> ${ev.date || "-"} ${ev.time || ""}</p>
+      <p><strong>Location:</strong> ${ev.location || "-"}</p>
+      <p><strong>Host:</strong> ${ev.host || "-"}</p>
+      <p><strong>Notes:</strong> ${ev.notes || "-"}</p>
+      <div class="section-title">Participants</div>
+    `;
+
+    // Participant + responses
+    const partList = document.createElement("ul");
+    partList.className = "participant-list";
+
+    (ev.participants || []).forEach(p => {
+      const li = document.createElement("li");
+      li.innerHTML = `<strong>${p.name}</strong> (${p.phone || ""})`;
+
+      if (p.responses && Object.keys(p.responses).length > 0) {
+        const respDiv = document.createElement("div");
+        respDiv.className = "responses";
+
+        Object.entries(p.responses).forEach(([q, ans]) => {
+          const r = document.createElement("p");
+          r.innerHTML = `<em>${q}:</em> ${ans}`;
+          respDiv.appendChild(r);
+        });
+
+        li.appendChild(respDiv);
+      } else {
+        const none = document.createElement("p");
+        none.className = "muted";
+        none.textContent = "No responses yet";
+        li.appendChild(none);
+      }
+
+      partList.appendChild(li);
+    });
+
+    details.appendChild(partList);
+
+    // Edit + Delete buttons
+    const actions = document.createElement("div");
+    actions.className = "mt8 flex";
+
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "Edit";
+    editBtn.onclick = () => {
+      console.log("[renderEventList] ✏️ Edit clicked for", ev);
+      loadIntoForm(ev);
+    };
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "Delete";
+    deleteBtn.className = "danger";
+    deleteBtn.onclick = async () => {
+      console.log("[renderEventList] 🗑️ Delete clicked for", ev);
+      if (confirm(`Delete event "${ev.name}"?`)) {
+        try {
+          await api(`/api/temp_events/${encodeURIComponent(ev.id)}`, "DELETE");
+          console.log("[renderEventList] ✅ Deleted", ev.id);
+          await loadEvents();
+        } catch (err) {
+          console.error("[renderEventList] ❌ Delete failed", err);
+          alert("Failed to delete event");
+        }
+      }
+    };
+
+    actions.appendChild(editBtn);
+    actions.appendChild(deleteBtn);
+    details.appendChild(actions);
+
+    card.appendChild(details);
+    container.appendChild(card);
+
+    // Toggle logic
+    const toggleBtn = header.querySelector(".toggle-btn");
+    toggleBtn.addEventListener("click", () => {
+      const isHidden = details.style.display === "none";
+      details.style.display = isHidden ? "block" : "none";
+      toggleBtn.textContent = isHidden ? "Collapse Details" : "Expand for Details";
+    });
+
+    console.log(`[renderEventList] Rendered event=${ev.name}, responses merged`, ev);
+  });
+}
+
+
+
+async function loadEvents(){
+  console.log("[events] loadEvents() called");
+  try {
+    // ✅ one extra call here
+    const [questions, users, events, responses] = await Promise.all([
+      api("/api/questions"),
+      api("/api/users"),
+      api("/api/temp_events"),
+      api("/api/responses")
+    ]);
+    console.log("[events] loadEvents data received", {questions, users, events, responses});
+
+    const qList=document.getElementById("known-questions");
+    qList.innerHTML="";
+    questions.forEach(q=>{
+      const div=document.createElement("div");
+      div.innerHTML=`<label><input type="checkbox" value="${q}"> ${q}</label>`;
+      qList.appendChild(div);
+    });
+
+    registeredUsers=users;
+    const uList=document.getElementById("known-users-list");
+    uList.innerHTML="";
+    users.forEach(u=>{
+      const div=document.createElement("div");
+      div.innerHTML=`<label><input type="checkbox" value="${u.name}"> ${u.name}</label>`;
+      uList.appendChild(div);
+    });
+    console.log("[loadEvents] rendered checkboxes =",
+      Array.from(document.querySelectorAll("#known-users-list input"))
+        .map(cb => cb.value));
+
+    // ✅ new merge step
+    events.forEach(ev=>{
+      const eventId = ev.id;
+      const respForEvent = responses[eventId] || {};
+      (ev.participants || []).forEach(p=>{
+        const pname = (p.name || "").trim();
+        if (respForEvent[pname]) {
+          p.responses = respForEvent[pname];
+          console.log(`[loadEvents] merged responses for ${pname} in event ${ev.name}`, respForEvent[pname]);
+        }
+      });
+    });
+
+    renderEventList(events, questions);
+  } catch (err) {
+    console.error("[events] loadEvents failed", err);
+    alert("Failed to load events.");
+  }
+}
+
+
+    // Event form submit handler
+    document.getElementById("eventForm").addEventListener("submit", async e=>{
+      e.preventDefault();
+      console.log("[events] saveEvent submit triggered");
+      await saveEvent();
+    });
+
+    document.getElementById("reset-btn").addEventListener("click",()=>{
+      console.log("[events] Reset clicked");
+      editingId=null;document.getElementById("form-title").innerText="Create a New Event";
+      document.getElementById("eventForm").reset();
+      document.getElementById("adhoc-questions").innerHTML="";
+      document.getElementById("adhoc-participants").innerHTML="";
+    });
+
+    document.getElementById("add-question").onclick=()=>{
+      console.log("[events] Add question clicked");
+      const v=document.getElementById("new-question").value.trim();
+      if(v){addAdhocQuestion(v);document.getElementById("new-question").value="";}
+    };
+
+    document.getElementById("add-adhoc").onclick=()=>{
+        console.log("[events] Add adhoc participant clicked");
+        const n=document.getElementById("adhoc_name").value.trim();
+        if(!n){
+          alert("Name required");
+          return;
+        }
+        addAdhocParticipant({
+          name:n,
+          phone:document.getElementById("adhoc_phone").value,
+          extra:document.getElementById("adhoc_extra").value
+        });
+        document.getElementById("adhoc_name").value="";
+        document.getElementById("adhoc_phone").value="";
+        document.getElementById("adhoc_extra").value="";
+      };
+</script>
+</body>
+</html>

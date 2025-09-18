@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Admin User View</title>
+    <link rel="stylesheet" href="/style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body>
+<div class="dashboard">
+    <nav class="nav">
+        <a href="/dashboard">⬅ Back to Dashboard</a>
+        <a href="/logout">Logout</a>
+    </nav>
+    <h1>🔎 User Events (Admin View)</h1>
+
+    <div class="box">
+        <label>Select Participant</label>
+        <select id="user-select"></select>
+    </div>
+
+    <div id="events-container"></div>
+</div>
+
+<script>
+    let selectedUser = null;
+
+    async function api(url, method="GET", data) {
+      console.log(`[userevents_admin] API ${method} ${url}`, data || "");
+      const opts = { method, credentials:"include", headers:{ "Content-Type":"application/json" }};
+      if (data) opts.body = JSON.stringify(data);
+      const r = await fetch(url, opts);
+      if (!r.ok) throw new Error(`${method} ${url} -> ${r.status}`);
+      const js = await r.json();
+      console.log(`[userevents_admin] ✅ API success ${method} ${url}`, js);
+      return js;
+    }
+
+    // Load registered + adhoc users into dropdown
+    async function loadUsers() {
+      try {
+        const [users, events] = await Promise.all([
+          api("/api/users"),
+          api("/api/temp_events")
+        ]);
+
+        // Start with registered users
+        const merged = [...users.map(u => ({ name: u.name }))];
+
+        // Merge adhoc participants from all events
+        events.forEach(ev => {
+          (ev.participants || []).forEach(p => {
+            if (!merged.find(u => u.name === p.name)) {
+              merged.push({ name: p.name });
+              console.log("[userevents_admin] ➕ Added adhoc participant from event", p);
+            }
+          });
+        });
+
+        console.log("[userevents_admin] Final user list =", merged);
+
+        const sel = document.getElementById("user-select");
+        sel.innerHTML = `<option value="">-- Select a user --</option>`;
+        merged.forEach(u=>{
+          const opt = document.createElement("option");
+          opt.value = u.name;
+          opt.textContent = u.name;
+          sel.appendChild(opt);
+        });
+
+        sel.onchange = ()=>{
+          selectedUser = sel.value || null;
+          if (selectedUser) loadEventsForUser(selectedUser);
+          else document.getElementById("events-container").innerHTML = "";
+        };
+      } catch(err) {
+        console.error("[userevents_admin] ❌ Failed to load users", err);
+        alert("Could not load users");
+      }
+    }
+
+    async function loadEventsForUser(user) {
+      try {
+        console.log(`[userevents_admin] Fetching events for ${user}`);
+
+        // fetch both the events for this user and all responses
+        const [evs, responses] = await Promise.all([
+          api(`/api/admin_events?user=${encodeURIComponent(user)}`),
+          api("/api/responses")
+        ]);
+
+        console.log("[userevents_admin] ✅ Data fetched", { evs, responses });
+
+        // merge responses into each event participant
+        evs.forEach(ev => {
+          const respForEvent = responses[ev.id] || {};
+          (ev.participants || []).forEach(p => {
+            if (respForEvent[p.name]) {
+              p.responses = respForEvent[p.name];
+              console.log(`[userevents_admin] merged responses for ${p.name} in event ${ev.name}`, p.responses);
+            }
+          });
+        });
+
+        renderEvents(evs, user);
+      } catch (err) {
+        console.error("[userevents_admin] ❌ Failed to load events", err);
+        alert("Could not load events");
+      }
+    }
+
+    function renderEvents(events, user) {
+      const container = document.getElementById("events-container");
+      container.innerHTML = "";
+
+      if (!events || events.length === 0) {
+        container.innerHTML = `<p class="muted">No events found for ${user}</p>`;
+        return;
+      }
+
+      events.forEach(ev => {
+        const card = document.createElement("div");
+        card.className = "box";
+
+        // Event header
+        card.innerHTML = `
+          <h2>${ev.name}</h2>
+          <p><strong>Date:</strong> ${ev.date || "-"} ${ev.time || ""}</p>
+          <p><strong>Location:</strong> ${ev.location || "-"}</p>
+          <p><strong>Host:</strong> ${ev.host || "-"}</p>
+          <p><strong>Notes:</strong> ${ev.notes || "-"}</p>
+        `;
+
+        // Participant form
+        const form = document.createElement("form");
+        form.className = "response-form";
+
+        // Find the participant object for this user
+        const participant = (ev.participants || []).find(p => p.name === user) || {};
+        const responses = participant.responses || {};
+
+        // Build questions (both saved + adhoc)
+        const allQuestions = [
+          ...(ev.questions || []),
+          ...(ev.temp_questions || [])
+        ];
+
+        allQuestions.forEach(q => {
+          const div = document.createElement("div");
+          div.className = "form-row";
+          const val = responses[q] || "";
+          div.innerHTML = `
+            <label>${q}</label>
+            <input type="text" name="${q}" value="${val}" placeholder="Enter response" />
+          `;
+          form.appendChild(div);
+        });
+
+        // Save button
+        const saveBtn = document.createElement("button");
+        saveBtn.type = "submit";
+        saveBtn.textContent = "Save Responses";
+        form.appendChild(saveBtn);
+
+        // Submit handler
+        form.onsubmit = async (e) => {
+          e.preventDefault();
+          const data = {};
+          allQuestions.forEach(q => {
+            const input = form.querySelector(`input[name="${q}"]`);
+            data[q] = input.value.trim();
+          });
+
+          try {
+            await api("/api/submit_response", "POST", {
+              event_id: ev.id,
+              user,
+              responses: data
+            });
+            alert("Responses saved!");
+          } catch (err) {
+            console.error("[userevents_admin] ❌ Failed to save responses", err);
+            alert("Failed to save responses");
+          }
+        };
+
+        card.appendChild(form);
+        container.appendChild(card);
+
+        console.log(`[renderEvents] Rendered event=${ev.name}, prefilled responses=`, responses);
+      });
+    }
+
+
+    document.addEventListener("DOMContentLoaded", loadUsers);
+</script>
+</body>
+</html>

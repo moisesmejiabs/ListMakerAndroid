@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <link rel="stylesheet" href="/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<div class="form-container" id="login-form">
+    <h2>Login</h2>
+
+    <form id="form" method="POST" novalidate>
+        <input type="text" name="username" id="username" placeholder="Username" required><br>
+        <input type="password" name="password" id="password" placeholder="Password" required><br>
+        <button type="submit">Login</button>
+    </form>
+
+    <p id="error" style="color:#c00; margin-top:8px; min-height:1.2em;"></p>
+
+    <p>Don't have an account? <a href="/signup">Sign up</a></p>
+</div>
+
+<script>
+    // If already logged in, skip login page
+(async () => {
+  try {
+    const r = await fetch('/api/session', { credentials: 'include' });
+    if (r.ok) {
+      const js = await r.json();
+      console.log("[login] already authenticated", js);
+      location.href = js.role === "user" ? "/userevents" : "/dashboard";
+    } else {
+      console.log("[login] no active session, staying on login page");
+      // Do nothing, let the user log in
+    }
+  } catch (err) {
+    console.warn("[login] session check failed", err);
+    // Do nothing, stay on login page
+  }
+})();
+
+
+
+
+    // Handle login
+    document.getElementById('form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = document.getElementById('error');
+      err.textContent = '';
+
+      const username = document.getElementById('username')?.value.trim();
+      const password = document.getElementById('password')?.value;
+
+      if (!username || !password) {
+        err.textContent = 'Please enter username and password.';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ username, password })
+        });
+
+        if (!res.ok) {
+          let msg = 'Invalid username or password.';
+          try { msg = (await res.json()).error || msg; } catch {}
+          err.textContent = msg;
+          return;
+        }
+
+        const js = await res.json();
+        console.log("[login] ✅ Login response", js);
+
+        // 🔑 Redirect according to backend
+        if (js.redirect) {
+          window.location.href = js.redirect;
+        } else {
+          window.location.href = "/dashboard"; // fallback
+        }
+
+      } catch (e2) {
+        err.textContent = 'Network error. Please try again.';
+        console.error(e2);
+      }
+    });
+
+    // Optional: focus username field
+    document.getElementById('username')?.focus();
+</script>
+</body>
+</html>

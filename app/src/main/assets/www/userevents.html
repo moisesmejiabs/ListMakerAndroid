@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>My Events</title>
+    <link rel="stylesheet" href="/style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <script>
+        window.App = window.App || {};
+        App.sessionPromise = App.sessionPromise || (async () => {
+          console.log("[userevents] 🔑 Fetching /api/session...");
+          const r = await fetch('/api/session', { credentials: 'include' });
+          if (!r.ok) {
+            console.error("[userevents] ❌ Session fetch failed", r.status, r.statusText);
+            throw new Error('not logged in');
+          }
+          const js = await r.json();
+          console.log("[userevents] ✅ Session = ", js);
+          return js;
+        })();
+    </script>
+</head>
+<body>
+<div class="dashboard">
+    <nav class="nav">
+        <a href="/logout">Logout</a>
+    </nav>
+    <p>
+        Logged in as: <strong><span id="uname"></span></strong>
+        role <span id="urole"></span>
+    </p>
+
+    <h1>My Events</h1>
+    <div id="user-events-list"></div>
+</div>
+
+<script>
+    async function api(url, method="GET", data) {
+      console.log(`[userevents] API call ${method} ${url}`, data || "");
+      const opts = { method, credentials:"include", headers:{ "Content-Type":"application/json" }};
+      if (data) opts.body = JSON.stringify(data);
+      const r = await fetch(url, opts);
+      if (!r.ok) {
+        console.error(`[userevents] ❌ API failed ${method} ${url} -> ${r.status} ${r.statusText}`);
+        throw new Error(`${method} ${url} -> ${r.status}`);
+      }
+      const js = await r.json();
+      console.log(`[userevents] ✅ API success ${method} ${url}`, js);
+      return js;
+    }
+function renderUserEvents(events, username) {
+  const container = document.getElementById("user-events-list");
+  container.innerHTML = "";
+
+  if (!events.length) {
+    container.innerHTML = `<p class="muted">You have no assigned events.</p>`;
+    return;
+  }
+
+  events.forEach(ev => {
+    const div = document.createElement("div");
+    div.className = "box";
+
+    div.innerHTML = `
+      <h2>${ev.name}</h2>
+      <p><strong>Date & Time:</strong> ${ev.date || "-"} ${ev.time || ""}</p>
+      <p><strong>Location:</strong> ${ev.location || "-"}</p>
+      <p><strong>Host:</strong> ${ev.host || "-"}</p>
+      <p><strong>Notes:</strong> ${ev.notes || "-"}</p>
+
+      <form class="response-form">
+        <div class="section-title">Your Responses</div>
+        <div class="list" id="questions-${ev.id}"></div>
+        <button type="submit" class="warn">Save Responses</button>
+      </form>
+    `;
+
+    const qBox = div.querySelector(`#questions-${ev.id}`);
+    const allQs = [...(ev.questions || []), ...(ev.temp_questions || [])];
+
+    // 🔎 Case-insensitive match
+    let myResponses = {};
+    if (ev.responses) {
+      const match = Object.entries(ev.responses).find(
+        ([uname]) => uname.toLowerCase() === username.toLowerCase()
+      );
+      if (match) {
+        myResponses = match[1];
+      }
+    }
+
+    console.log("[userevents] Prepopulate for", username, myResponses);
+
+    allQs.forEach(q => {
+      const row = document.createElement("div");
+      row.className = "item-row";
+      row.innerHTML = `
+        <label>${q}</label><br/>
+        <input type="text" data-question="${q}" placeholder="Your answer"/>
+      `;
+
+      const respVal = myResponses[q];
+      if (respVal && respVal.trim() !== "") {
+        row.querySelector("input").value = respVal;
+        console.log(`[userevents] Prepopulated ${q} for ${username} =`, respVal);
+      } else {
+        console.log(`[userevents] No saved response for ${q} user=${username}`);
+      }
+
+      qBox.appendChild(row);
+    });
+
+    div.querySelector(".response-form").addEventListener("submit", async e => {
+      e.preventDefault();
+      console.log(`[userevents] Submit responses for event=${ev.id}`);
+
+      const responses = {};
+      qBox.querySelectorAll("input[data-question]").forEach(inp => {
+        responses[inp.dataset.question] = inp.value.trim();
+      });
+
+      const payload = {
+        event: ev.id,
+        username,
+        responses
+      };
+
+      try {
+        await api("/api/responses", "POST", payload);
+        alert("Responses saved!");
+      } catch (err) {
+        console.error("[userevents] Save responses failed", err);
+        alert("Failed to save responses.");
+      }
+    });
+
+    container.appendChild(div);
+  });
+}
+
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      console.log("[userevents] DOMContentLoaded fired");
+      try {
+        const { role, username } = await App.sessionPromise;
+        console.log(`[userevents] Role=${role} Username=${username}`);
+        document.getElementById("uname").textContent = username;
+        document.getElementById("urole").textContent = role;
+
+        const events = await api("/api/my_events");
+        renderUserEvents(events, username);
+
+      } catch (err) {
+        console.warn("[userevents] Session check failed -> redirecting to /login", err);
+        location.href = "/login";
+      }
+    });
+</script>
+</body>
+</html>

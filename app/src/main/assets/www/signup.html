@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sign Up</title>
+    <link rel="stylesheet" href="/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<div class="form-container">
+    <h2>Sign Up</h2>
+
+    <form id="signup-form" method="POST" novalidate>
+        <input type="text" name="username" id="username" placeholder="Username" required><br>
+        <input type="password" name="password" id="password" placeholder="Password" required><br>
+        <select name="role" id="role">
+            <option value="user" selected>User</option>
+            <option value="admin">Admin</option>
+        </select><br>
+        <button type="submit">Sign Up</button>
+    </form>
+
+    <p id="error" style="color:#c00; margin-top:8px; min-height:1.2em;"></p>
+
+    <p>Already have an account? <a href="/login">Login</a></p>
+</div>
+
+<script>
+    // If already logged in, go to dashboard
+    (async () => {
+      try {
+        const r = await fetch('/api/session', { credentials: 'include' });
+        if (r.ok) location.href = '/dashboard';
+      } catch (_) {}
+    })();
+
+    document.getElementById('signup-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = document.getElementById('error');
+      err.textContent = '';
+
+      const username = document.getElementById('username')?.value.trim();
+      const password = document.getElementById('password')?.value;
+      const role = document.getElementById('role')?.value || 'user';
+
+      if (!username || !password) {
+        err.textContent = 'Please enter a username and password.';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ username, password, role })
+        });
+
+        if (!res.ok) {
+          let msg = 'Sign up failed.';
+          try { msg = (await res.json()).error || msg; } catch {}
+          err.textContent = msg; // e.g., "Username exists"
+          return;
+        }
+
+        // Success: account created. Server doesn't auto-login here, so send them to login.
+        location.href = '/login';
+      } catch (e2) {
+        err.textContent = 'Network error. Please try again.';
+        console.error(e2);
+      }
+    });
+
+    document.getElementById('username')?.focus();
+</script>
+</body>
+</html>

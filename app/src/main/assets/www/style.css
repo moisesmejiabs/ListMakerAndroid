@@ -1,0 +1,314 @@
+/* =========================================================
+   GLOBAL LAYOUT & RESET
+   ========================================================= */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: Arial, sans-serif;
+  background: #fafafa;
+  color: #333;
+  box-sizing: border-box;
+}
+
+* {
+  box-sizing: inherit;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure app always stretches full screen */
+.dashboard {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+.nav {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.nav a {
+  text-decoration: none;
+  color: #0055cc;
+  font-weight: bold;
+}
+
+.nav a:hover {
+  text-decoration: underline;
+}
+
+/* =========================================================
+   HEADINGS & TITLES
+   ========================================================= */
+h1, h2, .section-title {
+  margin: 12px 0;
+  color: #222;
+}
+
+.section-title {
+  font-weight: bold;
+  font-size: 1.2em;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 4px;
+}
+
+/* =========================================================
+   FORMS & INPUTS
+   ========================================================= */
+form {
+  width: 100%;
+  max-width: 100%;
+}
+
+input, button, select, textarea {
+  font-size: 1em;
+  padding: 6px 8px;
+  margin: 4px 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  background: #007acc;
+  color: #fff;
+  font-weight: bold;
+  transition: background 0.2s ease;
+}
+
+button:hover {
+  background: #005fa3;
+}
+
+button.secondary {
+  background: #aaa;
+  color: #fff;
+}
+
+button.secondary:hover {
+  background: #888;
+}
+
+button.danger {
+  background: #cc0000;
+  color: #fff;
+}
+
+button.danger:hover {
+  background: #990000;
+}
+
+button.warn {
+  background: #f0ad4e;
+  color: #fff;
+}
+
+button.warn:hover {
+  background: #d98c1f;
+}
+
+/* =========================================================
+   GRID & FLEX HELPERS
+   ========================================================= */
+.grid {
+  display: grid;
+  gap: 12px;
+}
+
+.grid.two {
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+.grid.three {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.flex {
+  display: flex;
+  gap: 8px;
+}
+
+.grow {
+  flex: 1;
+}
+
+.spacer {
+  margin: 16px 0;
+}
+
+/* =========================================================
+   LISTS & ITEMS
+   ========================================================= */
+.list {
+  border: 1px solid #ddd;
+  padding: 8px;
+  border-radius: 4px;
+  background: #fff;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.item-row span {
+  flex: 1;
+}
+
+/* =========================================================
+   Question & User lists — checkbox hard-left, text right after
+   ========================================================= */
+#known-questions,
+#known-users-list {
+  /* make children stretch instead of centering */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch !important;
+  width: 100%;
+}
+
+#known-questions > div,
+#known-users-list > div {
+  width: 100%;
+}
+
+#known-questions > div > label,
+#known-users-list > div > label {
+  /* lay out as [checkbox][text] and fill the row */
+  display: grid !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;        /* vertical alignment */
+  gap: 8px;
+  width: 100%;
+  justify-content: start;
+  text-align: left;
+}
+
+#known-questions input[type="checkbox"],
+#known-users-list input[type="checkbox"] {
+  margin: 0;
+  position: static;
+  justify-self: start;        /* stick to the far-left grid edge */
+}
+
+/* Ad-hoc question input + button stacked vertically */
+#adhoc-questions + .mt8.flex {
+  flex-direction: column;   /* stack vertically */
+  align-items: stretch;     /* full width */
+  gap: 8px;                 /* spacing */
+}
+
+/* Ad-hoc questions list: each item stacked text over remove button */
+#adhoc-questions .item-row {
+  display: flex;
+  flex-direction: column;   /* stack vertically */
+  align-items: flex-start;  /* align to left */
+  gap: 4px;                 /* space between text and button */
+}
+
+/* =========================================================
+   TABLES
+   ========================================================= */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+.table td, .table th {
+  border: 1px solid #ddd;
+  padding: 8px;
+  vertical-align: top;
+}
+
+.table th {
+  background: #f5f5f5;
+  text-align: left;
+}
+
+.table td.right {
+  text-align: right;
+}
+
+.table td.muted {
+  color: #888;
+  font-style: italic;
+}
+
+/* =========================================================
+   EVENT CARDS & SCROLLING
+   ========================================================= */
+.event-card {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: #fff;
+  max-height: 400px;
+  overflow: auto; /* Scrollbars if content exceeds */
+}
+
+.event-card strong {
+  display: inline-block;
+  width: 120px;
+  color: #111;
+}
+
+/* =========================================================
+   RESPONSES
+   ========================================================= */
+.response {
+  margin-left: 16px;
+  padding-left: 6px;
+  border-left: 2px solid #eee;
+}
+
+.response.adhoc {
+  font-style: italic;
+  color: #555; /* lighter gray for ad-hoc questions */
+}
+
+/* =========================================================
+   UTILS
+   ========================================================= */
+.muted {
+  color: #777;
+  font-style: italic;
+}
+
+.small {
+  font-size: 0.85em;
+}
+
+
+.toggle-btn {
+  width: auto;
+  padding: 2px 8px;
+  white-space: nowrap;
+  font-size: 0.9em; /* optional, makes it slightly smaller */
+}
+
+.form-container {
+  margin-top: 80px;     /* space from top */
+  margin-left: 40px;    /* space on left */
+  margin-right: 40px;   /* space on right */
+}

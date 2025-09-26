@@ -47,6 +47,8 @@ import java.util.UUID
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import android.util.Log
+import org.json.JSONObject
+
 
 
 // alongside AccountRec, Person, etc.
@@ -803,22 +805,41 @@ class SimpleServer(
 
                 "/api/submit_response" -> {
                     if (currentUser(session) == null) return unauthorized()
+
                     data class RespReq(
-                        val event: String = "",
-                        val name: String = "",
+                        val event: String? = null,
+                        val name: String? = null,
                         val responses: Map<String, String> = emptyMap()
                     )
 
-                    val req = parse<RespReq>(readPostJson(session))
-                    if (req.event.isBlank() || req.name.isBlank() || req.responses.isEmpty()) return err(
-                        "Invalid data"
-                    )
+                    val rawJson = readPostJson(session)
+                    println("📩 /api/submit_response raw body = $rawJson")
 
-                    val byEvent = responsesStore.getOrPut(req.event) { mutableMapOf() }
-                    byEvent[req.name] =
-                        mutableMapOf<String, String>().apply { putAll(req.responses) }
-                    responsesStore[req.event] = byEvent
+                    val baseReq = parse<RespReq>(rawJson)
+                    val json = JSONObject(rawJson)
+
+                    val event = if (!baseReq.event.isNullOrBlank()) baseReq.event else json.optString("event_id", "")
+                    val name  = if (!baseReq.name.isNullOrBlank())  baseReq.name  else json.optString("user", "")
+                    val req = baseReq.copy(event = event, name = name)
+
+                    println("🔎 Parsed RespReq: event='${req.event}' name='${req.name}' responses=${req.responses}")
+
+                    if (req.event.isNullOrBlank() || req.name.isNullOrBlank() || req.responses.isEmpty()) {
+                        println("🚨 Invalid data in RespReq: $req")
+                        return err("Invalid data")
+                    }
+
+                    val byEvent = responsesStore.getOrPut(req.event!!) { mutableMapOf() }
+                    byEvent[req.name!!] = mutableMapOf<String, String>().apply {
+                        putAll(req.responses)
+                    }
+                    responsesStore[req.event!!] = byEvent
+
+                    println("📝 Updated responsesStore for event='${req.event}' name='${req.name}' -> ${byEvent[req.name]}")
+
                     writeJsonFile(RESPONSES_FILE, responsesStore)
+                    println("✅ responses.json successfully updated")
+
                     ok()
                 }
 

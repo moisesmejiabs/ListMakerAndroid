@@ -30,6 +30,8 @@ class SimpleServerService : Service() {
     override fun onDestroy() {
         try { server.stopServer() } catch (_: Throwable) {}
         super.onDestroy()
+        stopForeground(true)
+        stopSelf()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

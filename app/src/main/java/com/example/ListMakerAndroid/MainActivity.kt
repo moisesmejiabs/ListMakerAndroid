@@ -55,6 +55,18 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.openInBrowser).setOnClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         }
+        // Exit app button
+        findViewById<Button>(R.id.exitApp).setOnClickListener {
+            // Explicitly target SimpleServerService
+            val serviceIntent = Intent(this, SimpleServerService::class.java)
+            stopService(serviceIntent)   // now it really tells Android to destroy
+            // Graceful exit
+            finishAffinity()  // closes all activities cleanly
+            // Hard exit fallback (ensures process is gone)
+            android.os.Process.killProcess(android.os.Process.myPid())
+            System.exit(0)        // ensures process exit
+
+        }
     }
 
     override fun onDestroy() {
@@ -114,7 +126,4 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.startForegroundService(this, svc)
         }
     }
-
-
-
 }

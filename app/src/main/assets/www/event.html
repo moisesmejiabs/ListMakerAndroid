@@ -42,6 +42,12 @@
           console.log("[events] Admin detected -> loading events...");
           await loadEvents();
         }
+
+          // 🔎 Debug: show what element is really receiving the touch
+          document.addEventListener("touchstart", e => {
+            console.log("👆 touched:", e.target.tagName, e.target.id, e.target.className);
+            e.target.style.outline = "2px solid red"; // highlight touched element
+          }, {capture:true});
       } catch (err) {
         console.warn("[events] session check failed -> redirecting to /login", err);
         location.href = "/login";
@@ -124,7 +130,7 @@
                 <div class="spacer"></div>
                 <div class="flex">
                     <button type="submit" id="save-btn">Save Event</button>
-                    <button type="button" id="reset-btn" class="secondary">Reset</button>
+                    <button type="button" id="reset-btn" class="secondary">Cancel</button>
                 </div>
             </form>
         </div>
@@ -225,11 +231,35 @@ function loadIntoForm(ev){
     }
   });
 
-  // Scroll into view
-  document.getElementById("create-edit").scrollIntoView({
+  // References to buttons
+  const saveBtn = document.getElementById("save-btn");
+  const cancelBtn = document.getElementById("reset-btn");
+
+  // 🔎 Log initial rects
+  console.log("💡 Initial Save button rect:", saveBtn.getBoundingClientRect());
+  console.log("💡 Initial Cancel button rect:", cancelBtn.getBoundingClientRect());
+  console.log("💡 Viewport height:", window.innerHeight);
+
+  // Scroll the Save button itself into view (centered in viewport)
+  saveBtn.scrollIntoView({
     behavior: "smooth",
-    block: "start"
+    block: "center"
   });
+
+  // Force viewport sync (like screen off/on does)
+  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+
+  // Log after scroll/reflow
+  setTimeout(() => {
+    const rect2 = saveBtn.getBoundingClientRect();
+    const centerX = rect2.left + rect2.width / 2;
+    const centerY = rect2.top + rect2.height / 2;
+    const el2 = document.elementFromPoint(centerX, centerY);
+
+    console.log("💡 After scroll, Save rect:", rect2, "Viewport height:", window.innerHeight);
+    console.log("🔍 After scroll, element at Save button center:", el2.tagName, el2.id, el2.className);
+  }, 400);
+
   console.log("[events] Scrolled to edit form and restored selections");
 }
 
@@ -379,6 +409,18 @@ function renderEventList(events, questions) {
       loadIntoForm(ev);
     };
 
+    // 🔎 Debug: log touch info before onclick fires
+    editBtn.addEventListener("touchstart", e => {
+      const rect = editBtn.getBoundingClientRect();
+      console.log("💡 Edit button rect:", rect, "Viewport height:", window.innerHeight);
+
+      const el = document.elementFromPoint(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2
+      );
+      console.log("🔍 Element at Edit button center:", el.tagName, el.id, el.className);
+    });
+
     const deleteBtn = document.createElement("button");
     deleteBtn.textContent = "Delete";
     deleteBtn.className = "danger";
@@ -408,6 +450,18 @@ function renderEventList(events, questions) {
     toggleBtn.addEventListener("click", () => {
       const isHidden = details.style.display === "none";
       details.style.display = isHidden ? "block" : "none";
+
+      if (isHidden) {
+        console.log("[renderEventList] 📖 Expanded event details:", ev.name);
+        console.log("💡 Scroll position before expand:", window.scrollY, "viewport height:", window.innerHeight, "doc height:", document.body.scrollHeight);
+
+        // 🔄 Force reflow + update document height
+        details.offsetHeight; // trigger reflow
+        document.body.style.minHeight = document.body.scrollHeight + "px";
+
+        console.log("💡 After expand, details scrollHeight:", details.scrollHeight, "doc height:", document.body.scrollHeight);
+      }
+
       toggleBtn.textContent = isHidden ? "Collapse Details" : "Expand for Details";
     });
 
@@ -483,6 +537,8 @@ async function loadEvents(){
       document.getElementById("eventForm").reset();
       document.getElementById("adhoc-questions").innerHTML="";
       document.getElementById("adhoc-participants").innerHTML="";
+      cleanupEditState();   // ⬅️ reset UI state
+
     });
 
     document.getElementById("add-question").onclick=()=>{
@@ -507,6 +563,25 @@ async function loadEvents(){
         document.getElementById("adhoc_phone").value="";
         document.getElementById("adhoc_extra").value="";
       };
+
+    function cleanupEditState() {
+  // Remove overlays if they exist
+  document.querySelectorAll('.overlay').forEach(el => el.remove());
+
+  // Reset focus/active states
+  if (document.activeElement) {
+    document.activeElement.blur();
+  }
+  document.body.style.pointerEvents = 'auto';
+
+  // Force repaint to clear stuck layers
+  document.body.style.display = 'none';
+  document.body.offsetHeight; // trigger reflow
+  document.body.style.display = '';
+
+  console.log("🔄 cleanupEditState(): UI reset complete");
+}
+
 </script>
 </body>
 </html>

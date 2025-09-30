@@ -44,10 +44,11 @@
         }
 
           // 🔎 Debug: show what element is really receiving the touch
-          document.addEventListener("touchstart", e => {
-            console.log("👆 touched:", e.target.tagName, e.target.id, e.target.className);
-            e.target.style.outline = "2px solid red"; // highlight touched element
-          }, {capture:true});
+          //document.addEventListener("touchstart", e => {
+          //  console.log("👆 touched:", e.target.tagName, e.target.id, e.target.className);
+          //  e.target.style.outline = "2px solid red"; // highlight touched element
+          //}, {capture:true});
+
       } catch (err) {
         console.warn("[events] session check failed -> redirecting to /login", err);
         location.href = "/login";
@@ -146,6 +147,24 @@
 <script>
     let editingId = null;
     let registeredUsers = [];
+
+    function sendSmsReminder(phone, msg) {
+      fetch('/api/sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phone, message: msg })
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log("📩 SMS API response", data);
+          alert("Reminder sent!");
+        })
+        .catch(err => {
+          console.error("❌ SMS Error", err);
+          alert("Failed to send SMS reminder");
+        });
+    }
+
 
     async function api(url, method="GET", data) {
       console.log(`[events] API call ${method} ${url}`, data || "");
@@ -375,6 +394,54 @@ function renderEventList(events, questions) {
       const li = document.createElement("li");
       li.innerHTML = `<strong>${p.name}</strong> (${p.phone || ""})`;
 
+      // 📩 Add SMS Reminder button if phone number exists
+        if (p.phone) {
+          const smsBtn = document.createElement("button");
+          smsBtn.className = "sms-btn";
+          smsBtn.textContent = "📩 SMS Reminder";
+
+        smsBtn.onclick = () => {
+          console.log("[events] 📲 Preparing SMS for", p.name, "event:", ev.name);
+
+          // Build SMS header
+          let smsMsg = `Reminder: Event "${ev.name}" on ${ev.date || "-"} ${ev.time || ""}.\nLocation: ${ev.location || "-"}\n`;
+
+          // event-specific questions (saved + adhoc)
+          const eventQuestions = [
+            ...(ev.questions || []),
+            ...(ev.temp_questions || [])
+          ];
+          console.log("[events] Event questions =", eventQuestions);
+
+          if (eventQuestions.length > 0) {
+            smsMsg += "Questions:\n";
+            eventQuestions.forEach(q => {
+              const ans = p.responses && p.responses[q] ? p.responses[q].trim() : "";
+              if (ans) {
+                smsMsg += `- ${q}: ${ans}\n`;
+                console.log(`[events] Q="${q}" -> Answer="${ans}"`);
+              } else {
+                smsMsg += `- ${q}: (no response)\n`;
+                console.log(`[events] Q="${q}" -> no response`);
+              }
+            });
+          } else {
+            smsMsg += "✅ No questions for this event.";
+            console.log("[events] No event questions found for", ev.name);
+          }
+
+          console.log(`[events] 📲 Sending SMS with phone=${p.phone} msg length=${smsMsg.length}`);
+          console.log("--- SMS BODY START ---\n" + smsMsg + "\n--- SMS BODY END ---");
+
+          // Call backend
+          sendSmsReminder(p.phone, smsMsg);
+        };
+
+
+          li.appendChild(smsBtn);
+        }
+
+
       if (p.responses && Object.keys(p.responses).length > 0) {
         const respDiv = document.createElement("div");
         respDiv.className = "responses";
@@ -395,6 +462,7 @@ function renderEventList(events, questions) {
 
       partList.appendChild(li);
     });
+
 
     details.appendChild(partList);
 
@@ -517,10 +585,10 @@ async function loadEvents(){
     });
 
     renderEventList(events, questions);
-  } catch (err) {
-    console.error("[events] loadEvents failed", err);
-    alert("Failed to load events.");
-  }
+      } catch (err) {
+        console.error("[events] loadEvents failed", err);
+        alert("Failed to load events.");
+      }
 }
 
 

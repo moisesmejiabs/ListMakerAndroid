@@ -17,6 +17,8 @@ import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import android.widget.Button
+import android.widget.Toast
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -27,6 +29,13 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // MainActivity.kt
+        if (checkSelfPermission(android.Manifest.permission.SEND_SMS)
+            != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.SEND_SMS), 1)
+        }
+
 
         // Start the HTTP server via a Foreground Service so it survives in background
         maybeRequestNotifPermission {
@@ -118,12 +127,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQ_NOTIF && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
-            val svc = Intent(this, SimpleServerService::class.java)
-            ContextCompat.startForegroundService(this, svc)
+
+        when (requestCode) {
+            REQ_NOTIF -> {
+                if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+                    val svc = Intent(this, SimpleServerService::class.java)
+                    ContextCompat.startForegroundService(this, svc)
+                } else {
+                    Toast.makeText(this, "Notification permission denied ❌", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            1 -> { // our SEND_SMS request
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "SMS permission granted ✅", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "SMS permission denied ❌", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
+
 }

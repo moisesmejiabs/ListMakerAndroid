@@ -15,7 +15,7 @@
         .row > * { flex: 1 1 260px; }
         .muted { color:#666; font-size: .95rem; }
         .pill { display:inline-block; padding: 4px 10px; border-radius:999px; background:#eef; font-weight:600; }
-        .list { max-height: 260px; overflow: auto; border: 1px solid #eee; border-radius: 6px; padding: 8px; }
+
         .list-item { display:flex; justify-content:space-between; padding:8px; border-bottom:1px dashed #eee; }
         .list-item:last-child { border-bottom: none; }
         .danger { background:#dc3545; color:#fff; }
@@ -35,6 +35,22 @@
           flex: 1; /* equal width columns */
           text-align: left;
         }
+        .col {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          min-height: 0;   /* 🔑 allow inner .list to scroll */
+        }
+        #questionsList,
+        #usersList {
+          max-height: 120px;   /* same size */
+          overflow-y: scroll;   /* always show scroll bar */
+          -webkit-overflow-scrolling: touch;
+          border: 1px solid #eee;
+          border-radius: 6px;
+          padding: 8px;
+        }
+
     </style>
 </head>
 <body class="bingo-body">
@@ -96,7 +112,7 @@
 
         <div class="col" style="margin-top:12px;">
             <div>
-                <h3 style="font-weight:700; margin-bottom:8px;">Modify User</h3>
+                <h3 style="font-weight:700; margin-bottom:8px;">Modify Participant</h3>
                 <form id="editUserForm">
                     <div class="col">
                         <div>
@@ -120,7 +136,7 @@
             </div>
 
             <div>
-                <h3 style="font-weight:700; margin-bottom:8px;">Delete User</h3>
+                <h3 style="font-weight:700; margin-bottom:8px;">Delete Participant</h3>
                 <form id="delUserForm">
                     <div class="col">
                         <div>
@@ -144,7 +160,7 @@
         <div class="col">
             <div>
                 <h3 style="font-weight:700; margin-bottom:8px;">All Questions</h3>
-                <div id="questionsList" class="list"></div>
+                <div id="questionsList" class="list" aria-live="polite"></div>
             </div>
             <div>
                 <h3 style="font-weight:700; margin-bottom:8px;">Add Question</h3>

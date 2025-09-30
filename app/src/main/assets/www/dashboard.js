@@ -80,23 +80,43 @@ function bindUserForms() {
   // Add User
 const addForm = $("#addUserForm");
 if (addForm) {
+  console.log("[init] addForm found -> attaching submit listener");
+
   addForm.addEventListener("submit", async (e) => {
+    console.log("[addForm] submit event triggered");
     e.preventDefault();
+
     const name = $("#addName")?.value.trim() || "";
     const phone = $("#addPhone")?.value.trim() || "";
     const address = $("#addAddr")?.value.trim() || "";
-    if (!name) { alert("Name is required."); return; }
+    console.log("[addForm] collected values =", { name, phone, address });
+
+    if (!name) {
+      console.warn("[addForm] Name is missing, aborting submit");
+      alert("Name is required.");
+      return;
+    }
+
     try {
+      console.log("[addForm] sending apiPost /api/users");
       await apiPost("/api/users", { name, phone, address });
+      console.log("[addForm] apiPost success, resetting form");
       addForm.reset();
+
+      console.log("[addForm] refreshing users");
       await refreshUsers();
+
+      console.log("[addForm] User added successfully");
       alert("User added.");
     } catch (err) {
-      console.error("[addUserForm] failed", err);
+      console.error("[addForm] failed with error:", err);
       alert("Failed to add user.");
     }
   });
+} else {
+  console.warn("[init] addForm not found in DOM");
 }
+
 
   // Delete User
 const delForm = $("#delUserForm");
@@ -209,12 +229,17 @@ function renderUsersIntoSelects() {
   if (!usersDiv) return;
 
   usersDiv.innerHTML = "";
+
+  console.log("[renderUsersIntoSelects] 🔎 USERS length =", USERS.length);
+
   if (!USERS.length) {
     usersDiv.innerHTML = `<div class="muted small">No users yet.</div>`;
     return;
   }
 
-  USERS.forEach(u => {
+  USERS.forEach((u, idx) => {
+    console.log(`[renderUsersIntoSelects] ➡️ User[${idx}]`, u);
+
     const row = document.createElement("div");
     row.className = "list-item user-row";
     row.innerHTML = `
@@ -225,6 +250,7 @@ function renderUsersIntoSelects() {
     usersDiv.appendChild(row);
   });
 
+  console.log("[renderUsersIntoSelects] ✅ Finished rendering, children count =", usersDiv.children.length);
 
   // Optional: render a simple table of users if present
   const tableBody = $("#users-table-body");
@@ -251,6 +277,7 @@ function renderUsersIntoSelects() {
     }
   }
 }
+
 
 async function refreshUsers() {
   try {
@@ -509,6 +536,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       location.href = "/login";
       return;
     }
+
+    bindAll();
 
     const js = await r.json();
     console.log("[dashboard] ✅ Session =", js);

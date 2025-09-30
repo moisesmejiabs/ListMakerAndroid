@@ -11,6 +11,11 @@
     <!-- If your targetSdk >= 33 (Android 13), you’ll need this at runtime too -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+
+
 
     <application
         android:allowBackup="true"

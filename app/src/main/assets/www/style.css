@@ -29,6 +29,7 @@ body {
   padding: 16px;
   max-width: 100%;
   overflow-x: hidden;
+  min-height: 0; /* ✅ allow inner scrolls */
 }
 
 /* =========================================================
@@ -141,6 +142,7 @@ button.warn:hover {
 .flex {
   display: flex;
   gap: 8px;
+  min-height: 0; /* ✅ allow children to scroll */
 }
 
 .grow {
@@ -159,8 +161,9 @@ button.warn:hover {
   padding: 8px;
   border-radius: 4px;
   background: #fff;
-  max-height: 250px;
+  max-height: 60vh;     /* ✅ adaptive scrolling */
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .item-row {
@@ -179,24 +182,31 @@ button.warn:hover {
    ========================================================= */
 #known-questions,
 #known-users-list {
-  /* make children stretch instead of centering */
   display: flex;
   flex-direction: column;
   align-items: stretch !important;
   width: 100%;
+  max-height: 60vh;            /* ✅ scroll area */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  padding: 8px;
+  min-height: 0;               /* ✅ allow inside flex */
 }
 
 #known-questions > div,
 #known-users-list > div {
   width: 100%;
+  flex: 0 0 auto;
 }
 
 #known-questions > div > label,
 #known-users-list > div > label {
-  /* lay out as [checkbox][text] and fill the row */
   display: grid !important;
   grid-template-columns: auto 1fr;
-  align-items: center;        /* vertical alignment */
+  align-items: center;
   gap: 8px;
   width: 100%;
   justify-content: start;
@@ -207,22 +217,22 @@ button.warn:hover {
 #known-users-list input[type="checkbox"] {
   margin: 0;
   position: static;
-  justify-self: start;        /* stick to the far-left grid edge */
+  justify-self: start;
 }
 
 /* Ad-hoc question input + button stacked vertically */
 #adhoc-questions + .mt8.flex {
-  flex-direction: column;   /* stack vertically */
-  align-items: stretch;     /* full width */
-  gap: 8px;                 /* spacing */
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
 }
 
 /* Ad-hoc questions list: each item stacked text over remove button */
 #adhoc-questions .item-row {
   display: flex;
-  flex-direction: column;   /* stack vertically */
-  align-items: flex-start;  /* align to left */
-  gap: 4px;                 /* space between text and button */
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 /* =========================================================
@@ -263,8 +273,9 @@ button.warn:hover {
   padding: 12px;
   margin-bottom: 12px;
   background: #fff;
-  max-height: 400px;
-  overflow: auto; /* Scrollbars if content exceeds */
+  max-height: 70vh;          /* ✅ bigger limit */
+  overflow-y: auto;          /* ✅ scroll events fully */
+  -webkit-overflow-scrolling: touch;
 }
 
 .event-card strong {
@@ -284,7 +295,7 @@ button.warn:hover {
 
 .response.adhoc {
   font-style: italic;
-  color: #555; /* lighter gray for ad-hoc questions */
+  color: #555;
 }
 
 /* =========================================================
@@ -299,16 +310,16 @@ button.warn:hover {
   font-size: 0.85em;
 }
 
-
 .toggle-btn {
   width: auto;
   padding: 2px 8px;
   white-space: nowrap;
-  font-size: 0.9em; /* optional, makes it slightly smaller */
+  font-size: 0.9em;
 }
 
 .form-container {
-  margin-top: 80px;     /* space from top */
-  margin-left: 40px;    /* space on left */
-  margin-right: 40px;   /* space on right */
+  margin-top: 80px;
+  margin-left: 40px;
+  margin-right: 40px;
+  min-height: 0; /* ✅ allow children to scroll */
 }

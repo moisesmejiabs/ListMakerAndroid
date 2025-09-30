@@ -48,6 +48,8 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import android.util.Log
 import org.json.JSONObject
+import com.example.listmakerandroid.SmsHandler
+
 
 
 
@@ -692,6 +694,12 @@ class SimpleServer(
                     }
                 }
 
+                // 📩 SMS endpoint
+                "/api/sms" -> {
+                    val handler = SmsHandler(context)
+                    handler.handleSms(session)
+                }
+
 
                 "/api/signup" -> {
                     data class SignupReq(
@@ -716,20 +724,40 @@ class SimpleServer(
 
                 "/api/users" -> {
                     val me = currentUser(session) ?: return unauthorized()
-                    if (me.second.role != "admin") return err(
-                        "Unauthorized",
-                        Response.Status.FORBIDDEN
-                    )
-                    val p = parse<Person>(readPostJson(session))
-                    if (p.name.isBlank()) return err("Missing name")
-                    if (people.any { it.name == p.name }) return err(
-                        "Name exists",
-                        Response.Status.CONFLICT
-                    )
+                    Log.d("SimpleServer", "🔎 /api/users called by user=${me.first} role=${me.second.role}")
+
+                    if (me.second.role != "admin") {
+                        Log.w("SimpleServer", "❌ Unauthorized attempt to POST /api/users by ${me.first}")
+                        return err("Unauthorized", Response.Status.FORBIDDEN)
+                    }
+
+                    val rawJson = readPostJson(session)
+                    Log.d("SimpleServer", "📥 Raw POST body for /api/users = $rawJson")
+
+                    val p = parse<Person>(rawJson)
+                    Log.d("SimpleServer", "➡️ Parsed Person = name='${p.name}', phone='${p.phone}', addr='${p.address}'")
+
+                    if (p.name.isBlank()) {
+                        Log.w("SimpleServer", "⚠️ Missing name field in POST /api/users")
+                        return err("Missing name")
+                    }
+
+                    if (people.any { it.name == p.name }) {
+                        Log.w("SimpleServer", "⚠️ Duplicate name '${p.name}' in POST /api/users")
+                        return err("Name exists", Response.Status.CONFLICT)
+                    }
+
                     people.add(p)
+                    Log.d("SimpleServer", "✅ Added new Person '${p.name}', total now=${people.size}")
+
                     writeJsonFile(DATA_FILE, people)
-                    json(people)
+                    Log.d("SimpleServer", "💾 Saved people list to $DATA_FILE")
+
+                    return json(people).also {
+                        Log.d("SimpleServer", "✅ Returning people list, count=${people.size}")
+                    }
                 }
+
 
                 "/api/questions" -> {
                     val me = currentUser(session) ?: return unauthorized()

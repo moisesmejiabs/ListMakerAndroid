@@ -513,6 +513,12 @@ function renderEventList(events, questions) {
     card.appendChild(details);
     container.appendChild(card);
 
+    // ✅ scroll to the newly added event if it's the last one
+    if (ev === events[events.length - 1]) {
+      card.scrollIntoView({ behavior: "smooth", block: "end" });
+      console.log("[renderEventList] 📜 Scrolled viewport to new event:", ev.name);
+    }
+
     // Toggle logic
     const toggleBtn = header.querySelector(".toggle-btn");
     toggleBtn.addEventListener("click", () => {

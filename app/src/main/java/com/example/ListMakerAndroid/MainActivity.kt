@@ -18,6 +18,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import android.widget.Button
 import android.widget.Toast
+import com.example.ListMakerAndroid.UnlockActivity
+import com.example.ListMakerAndroid.UnlockManager
 
 
 class MainActivity : AppCompatActivity() {
@@ -28,6 +30,17 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Check if app is unlocked today
+        val expectedCode = UnlockManager.tryUnlockApp(this, "") // dummy check won't work
+        // Instead, check if user has already unlocked session for today
+        if (!UnlockManager.isUnlockedForToday(this)) {
+            val intent = Intent(this, UnlockActivity::class.java)
+            startActivity(intent)
+            finish()
+            return
+        }
+
         setContentView(R.layout.activity_main)
 
         // MainActivity.kt

@@ -900,28 +900,41 @@ class SimpleServer(
             Method.PUT -> when {
                 uri == "/api/users" -> {
                     val me = currentUser(session) ?: return unauthorized()
-                    if (me.second.role != "admin") return err(
-                        "Unauthorized",
-                        Response.Status.FORBIDDEN
-                    )
+                    if (me.second.role != "admin")
+                        return err("Unauthorized", Response.Status.FORBIDDEN)
 
                     val body = readPostJson(session)
                     if (body.isBlank()) return err("empty body")
+
                     val u = try {
                         gson.fromJson(body, UserUpdateReq::class.java)
                     } catch (_: Exception) {
                         null
-                    }
-                        ?: return err("invalid json")
+                    } ?: return err("invalid json")
+
                     if (u.name.isBlank()) return err("name required")
 
                     val idx = people.indexOfFirst { it.name == u.name }
                     if (idx < 0) return err("Not found", Response.Status.NOT_FOUND)
+
                     val p = people[idx]
-                    if (u.phone != null) p.phone = u.phone
-                    if (u.address != null) p.address = u.address
+                    Log.d("SimpleServer", "🛠 Updating user '${u.name}'")
+                    Log.d("SimpleServer", "Before update: phone='${p.phone}', address='${p.address}'")
+
+                    // ✅ Only update provided fields; preserve existing data
+                    if (!u.phone.isNullOrBlank()) {
+                        p.phone = u.phone
+                        Log.d("SimpleServer", "📞 Updated phone to '${u.phone}'")
+                    }
+                    if (!u.address.isNullOrBlank()) {
+                        p.address = u.address
+                        Log.d("SimpleServer", "🏠 Updated address to '${u.address}'")
+                    }
+
                     people[idx] = p
                     writeJsonFile(DATA_FILE, people)
+
+                    Log.d("SimpleServer", "✅ After update: phone='${p.phone}', address='${p.address}'")
                     return json(people)
                 }
 

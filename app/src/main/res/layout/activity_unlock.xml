@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/unlockLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="24dp"
+    android:background="#FFFFFF">
+
+    <TextView
+        android:id="@+id/uniqueIdView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Unique App ID:"
+        android:textSize="14sp"
+        android:textColor="#000000"
+        android:padding="8dp"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/copyButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Copy ID"
+        android:backgroundTint="#4CAF50"
+        android:textColor="#FFFFFF"
+        android:padding="8dp"
+        android:layout_marginBottom="16dp" />
+
+    <EditText
+        android:id="@+id/codeInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter Unlock Code"
+        android:inputType="text"
+        android:textSize="18sp"
+        android:padding="16dp"
+        android:background="@android:drawable/edit_text"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/unlockButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Unlock"
+        android:textSize="18sp"
+        android:backgroundTint="#3F51B5"
+        android:textColor="#FFFFFF" />
+</LinearLayout>

@@ -27,6 +27,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ListMakerAndroid"
         android:usesCleartextTraffic="true">  <!-- Allow HTTP -->
+        <activity android:name=".UnlockActivity" />
 
         <activity
             android:name=".MainActivity"

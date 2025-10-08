@@ -1,15 +1,25 @@
+# Android Studio / IntelliJ
+.idea/
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+
+# Gradle / Build
+.gradle/
+build/
+app/build/
 local.properties
+.externalNativeBuild/
+.cxx/
+
+# Generated / Cache files
+captures/
+output.json
+
+# OS / System
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Ignore deployment target configuration (local device settings)
+.idea/deploymentTargetSelector.xml

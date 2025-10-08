@@ -50,9 +50,6 @@ import android.util.Log
 import org.json.JSONObject
 import com.example.listmakerandroid.SmsHandler
 
-
-
-
 // alongside AccountRec, Person, etc.
 data class UserUpdateReq(
     val name: String = "",
@@ -64,7 +61,7 @@ data class UserUpdateReq(
 class SimpleServer(
     private val context: Context,
     port: Int = 53399,
-) : NanoHTTPD(port) {
+) : NanoHTTPD("0.0.0.0",port) {
 
     private val gson = Gson()
 

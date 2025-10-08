@@ -20,6 +20,7 @@ import android.widget.Button
 import android.widget.Toast
 import com.example.ListMakerAndroid.UnlockActivity
 import com.example.ListMakerAndroid.UnlockManager
+import androidx.activity.result.ActivityResultLauncher
 
 
 class MainActivity : AppCompatActivity() {
@@ -28,8 +29,28 @@ class MainActivity : AppCompatActivity() {
     private val port = 53399
     private val REQ_NOTIF = 42   // <- add this
 
+    private lateinit var reportLauncher: ActivityResultLauncher<Intent>
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        setContentView(R.layout.activity_main)
+
+
+        // --- BUG REPORT FEATURE START ---
+        // Google Form link for bug reporting
+                val formUrl = "https://docs.google.com/forms/d/e/1FAIpQLScCeDSpzGq_YHHYQAXltvINxlaZKuIYlqBLhM5bh1KEN1iu-A/viewform?usp=header"
+                val entryId = "1093938144" // replace with your actual Google Form field ID
+
+        // Register the voice report launcher
+                reportLauncher = IssueReporter.register(this, formUrl, entryId)
+
+        // Bind the "Report Issue" button
+                findViewById<Button>(R.id.btnReportIssue).setOnClickListener {
+                    IssueReporter.startVoiceReport(this, reportLauncher)
+                }
+        // --- BUG REPORT FEATURE END ---
+
 
         // Check if app is unlocked today
         val expectedCode = UnlockManager.tryUnlockApp(this, "") // dummy check won't work
@@ -40,8 +61,6 @@ class MainActivity : AppCompatActivity() {
             finish()
             return
         }
-
-        setContentView(R.layout.activity_main)
 
         // MainActivity.kt
         if (checkSelfPermission(android.Manifest.permission.SEND_SMS)

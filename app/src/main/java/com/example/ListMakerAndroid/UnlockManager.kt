@@ -13,7 +13,6 @@ object UnlockManager {
     private const val SECRET_KEY = "MySuperSecret2025"
     private const val KEY_LAST_UNLOCK_SLICE = "last_unlock_slice"
 
-
     // Generate (or reuse) install ID (UUID per app install)
     private fun getOrCreateInstallId(context: Context): String {
         val prefs = getPrefs(context)
@@ -45,10 +44,35 @@ object UnlockManager {
         return hash.substring(0, 6).uppercase(Locale.US)
     }
 
-    // Validate entered code
+    // Generate weekly OTC (valid for 7 days)
+    private fun generateWeekCode(context: Context): String {
+        val uniqueId = getUniqueAppId(context)
+        val weekSlice = System.currentTimeMillis() / (1000L * 60 * 60 * 24 * 7) // weekly slice
+        val raw = "$SECRET_KEY-$uniqueId-$weekSlice"
+        val hash = sha256(raw)
+        return hash.substring(0, 6).uppercase(Locale.US)
+    }
+
+    // Generate monthly OTC (valid for 30 days)
+    private fun generateMonthCode(context: Context): String {
+        val uniqueId = getUniqueAppId(context)
+        val monthSlice = System.currentTimeMillis() / (1000L * 60 * 60 * 24 * 30) // monthly slice
+        val raw = "$SECRET_KEY-$uniqueId-$monthSlice"
+        val hash = sha256(raw)
+        return hash.substring(0, 6).uppercase(Locale.US)
+    }
+
+    // Validate entered code (accepts 1-day, 7-day, or 30-day OTC)
     fun tryUnlockApp(context: Context, inputCode: String): Boolean {
-        val expectedCode = generateTodayCode(context)
-        return inputCode.equals(expectedCode, ignoreCase = true)
+        val validCodes = listOf(
+            generateTodayCode(context),
+            generateWeekCode(context),
+            generateMonthCode(context)
+        )
+
+        val match = validCodes.any { it.equals(inputCode, ignoreCase = true) }
+        if (match) markUnlockedForToday(context)
+        return match
     }
 
     private fun sha256(input: String): String {
